@@ -10,7 +10,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
-*/
+ */
 
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -38,6 +38,7 @@
 #include <plat/cpu.h>
 #include <plat/devs.h>
 #include <plat/fb.h>
+#include <plat/sdhci.h>
 #include <linux/platform_data/mtd-nand-s3c2410.h>
 #include <plat/regs-serial.h>
 #include <linux/platform_data/touchscreen-s3c2410.h>
@@ -46,6 +47,9 @@
 #include <video/samsung_fimd.h>
 
 #include <linux/leds.h>
+#include <linux/delay.h>
+#include <plat/regs-usb-hsotg-phy.h>
+#include <plat/clock.h>
 #include "common.h"
 
 #define UCON S3C2410_UCON_DEFAULT
@@ -90,36 +94,69 @@ static struct s3c2410_uartcfg ok6410_uartcfgs[] __initdata = {
  * GPM3 => LED4
  */
 static struct gpio_led ok6410_leds[] = {
-    [0] = {
-        .name = "LED1",
-        .gpio = S3C64XX_GPM(0),
-    },
-    [1] = {
-        .name = "LED2",
-        .gpio = S3C64XX_GPM(1),
-    },
-    [2] = {
-        .name = "LED3",
-        .gpio = S3C64XX_GPM(2),
-    },
-    [3] = {
-        .name = "LED4",
-        .gpio = S3C64XX_GPM(3),
-    },
+	[0] = {
+		.name = "LED1",
+		.gpio = S3C64XX_GPM(0),
+	},
+	[1] = {
+		.name = "LED2",
+		.gpio = S3C64XX_GPM(1),
+	},
+	[2] = {
+		.name = "LED3",
+		.gpio = S3C64XX_GPM(2),
+	},
+	[3] = {
+		.name = "LED4",
+		.gpio = S3C64XX_GPM(3),
+	},
 };
 
 static struct gpio_led_platform_data ok6410_gpio_led_pdata = {
-    .num_leds = ARRAY_SIZE(ok6410_leds),
-    .leds     = ok6410_leds,
+	.num_leds = ARRAY_SIZE(ok6410_leds),
+	.leds     = ok6410_leds,
 };
 
 static struct platform_device ok6410_device_led = {
-    .name = "leds-gpio",
-    .id   = -1,
-    .dev  = {
-        .platform_data = &ok6410_gpio_led_pdata,
-    },
+	.name = "leds-gpio",
+	.id   = -1,
+	.dev  = {
+		.platform_data = &ok6410_gpio_led_pdata,
+	},
 };
+
+/* MMC/SD config */
+static struct s3c_sdhci_platdata ok6410_hsmmc0_pdata = {
+	.max_width = 4,
+	.cd_type = S3C_SDHCI_CD_INTERNAL,
+};
+
+static struct s3c_sdhci_platdata ok6410_hsmmc1_pdata = {
+	.max_width = 4,
+	.cd_type = S3C_SDHCI_CD_PERMANENT,
+};
+
+#ifdef CONFIG_USB_SUPPORT
+void s3c_hsotg_phy_config(int enable) {
+u32 val;
+
+if (enable) {
+__raw_writel(0x0, S3C_PHYPWR); /* Power up */
+
+val = __raw_readl(S3C_PHYCLK);
+val &= ~S3C_PHYCLK_CLKSEL_MASK;
+__raw_writel(val, S3C_PHYCLK);
+
+__raw_writel(0x1, S3C_RSTCON);
+udelay(5);
+__raw_writel(0x0, S3C_RSTCON); /* Finish the reset */
+udelay(5);
+} else {
+__raw_writel(0x19, S3C_PHYPWR); /* Power down */
+}
+}
+EXPORT_SYMBOL(s3c_hsotg_phy_config);
+#endif
 
 /* DM9000AEP 10/100 ethernet controller */
 
@@ -127,7 +164,7 @@ static struct resource ok6410_dm9k_resource[] = {
 	[0] = DEFINE_RES_MEM(S3C64XX_PA_XM0CSN1, 2),
 	[1] = DEFINE_RES_MEM(S3C64XX_PA_XM0CSN1 + 4, 2),
 	[2] = DEFINE_RES_NAMED(S3C_EINT(7), 1, NULL, IORESOURCE_IRQ \
-					| IORESOURCE_IRQ_HIGHLEVEL),
+			| IORESOURCE_IRQ_HIGHLEVEL),
 };
 
 static struct dm9000_plat_data ok6410_dm9k_pdata = {
@@ -242,7 +279,7 @@ static struct s3c_fb_platdata ok6410_lcd_pdata[] __initdata = {
 };
 
 static void ok6410_lcd_power_set(struct plat_lcd_data *pd,
-				   unsigned int power)
+		unsigned int power)
 {
 	if (power)
 		gpio_direction_output(S3C64XX_GPE(0), 1);
@@ -305,7 +342,7 @@ static int __init ok6410_features_setup(char *str)
 {
 	if (str)
 		strlcpy(ok6410_features_str, str,
-			sizeof(ok6410_features_str));
+				sizeof(ok6410_features_str));
 	return 1;
 }
 
@@ -331,21 +368,21 @@ static void ok6410_parse_features(
 		char f = *fp++;
 
 		switch (f) {
-		case '0'...'9':	/* tft screen */
-			if (features->done & FEATURE_SCREEN) {
-				printk(KERN_INFO "OK6410: '%c' ignored, "
-					"screen type already set\n", f);
-			} else {
-				int li = f - '0';
-				if (li >= ARRAY_SIZE(ok6410_lcd_pdata))
-					printk(KERN_INFO "OK6410: '%c' out "
-						"of range LCD mode\n", f);
-				else {
-					features->lcd_index = li;
+			case '0'...'9':	/* tft screen */
+				if (features->done & FEATURE_SCREEN) {
+					printk(KERN_INFO "OK6410: '%c' ignored, "
+							"screen type already set\n", f);
+				} else {
+					int li = f - '0';
+					if (li >= ARRAY_SIZE(ok6410_lcd_pdata))
+						printk(KERN_INFO "OK6410: '%c' out "
+								"of range LCD mode\n", f);
+					else {
+						features->lcd_index = li;
+					}
 				}
-			}
-			features->done |= FEATURE_SCREEN;
-			break;
+				features->done |= FEATURE_SCREEN;
+				break;
 		}
 	}
 }
@@ -362,33 +399,35 @@ static void __init ok6410_machine_init(void)
 	ok6410_parse_features(&features, ok6410_features_str);
 
 	printk(KERN_INFO "OK6410: selected LCD display is %dx%d\n",
-		ok6410_lcd_pdata[features.lcd_index].win[0]->xres,
-		ok6410_lcd_pdata[features.lcd_index].win[0]->yres);
+			ok6410_lcd_pdata[features.lcd_index].win[0]->xres,
+			ok6410_lcd_pdata[features.lcd_index].win[0]->yres);
 
 	s3c_device_nand.name = "s3c6410-nand";
 	s3c_nand_set_platdata(&ok6410_nand_info);
+	s3c_sdhci0_set_platdata(&ok6410_hsmmc0_pdata);
+	s3c_sdhci1_set_platdata(&ok6410_hsmmc1_pdata);
 	s3c_fb_set_platdata(&ok6410_lcd_pdata[features.lcd_index]);
 	s3c24xx_ts_set_platdata(NULL);
-
+   s3c_hsotg_phy_config(1);
 	/* configure nCS1 width to 16 bits */
 
 	cs1 = __raw_readl(S3C64XX_SROM_BW) &
 		~(S3C64XX_SROM_BW__CS_MASK << S3C64XX_SROM_BW__NCS1__SHIFT);
 	cs1 |= ((1 << S3C64XX_SROM_BW__DATAWIDTH__SHIFT) |
-		(1 << S3C64XX_SROM_BW__WAITENABLE__SHIFT) |
-		(1 << S3C64XX_SROM_BW__BYTEENABLE__SHIFT)) <<
-			S3C64XX_SROM_BW__NCS1__SHIFT;
+			(1 << S3C64XX_SROM_BW__WAITENABLE__SHIFT) |
+			(1 << S3C64XX_SROM_BW__BYTEENABLE__SHIFT)) <<
+		S3C64XX_SROM_BW__NCS1__SHIFT;
 	__raw_writel(cs1, S3C64XX_SROM_BW);
 
 	/* set timing for nCS1 suitable for ethernet chip */
 
 	__raw_writel((0 << S3C64XX_SROM_BCX__PMC__SHIFT) |
-		(6 << S3C64XX_SROM_BCX__TACP__SHIFT) |
-		(4 << S3C64XX_SROM_BCX__TCAH__SHIFT) |
-		(1 << S3C64XX_SROM_BCX__TCOH__SHIFT) |
-		(13 << S3C64XX_SROM_BCX__TACC__SHIFT) |
-		(4 << S3C64XX_SROM_BCX__TCOS__SHIFT) |
-		(0 << S3C64XX_SROM_BCX__TACS__SHIFT), S3C64XX_SROM_BC1);
+			(6 << S3C64XX_SROM_BCX__TACP__SHIFT) |
+			(4 << S3C64XX_SROM_BCX__TCAH__SHIFT) |
+			(1 << S3C64XX_SROM_BCX__TCOH__SHIFT) |
+			(13 << S3C64XX_SROM_BCX__TACC__SHIFT) |
+			(4 << S3C64XX_SROM_BCX__TCOS__SHIFT) |
+			(0 << S3C64XX_SROM_BCX__TACS__SHIFT), S3C64XX_SROM_BC1);
 
 	gpio_request(S3C64XX_GPF(15), "LCD power");
 	gpio_request(S3C64XX_GPE(0), "LCD power");
@@ -397,8 +436,8 @@ static void __init ok6410_machine_init(void)
 }
 
 MACHINE_START(OK6410, "OK6410")
-	/* Maintainer: Darius Augulis <augulis.darius@gmail.com> */
-	.atag_offset	= 0x100,
+/* Maintainer: Darius Augulis <augulis.darius@gmail.com> */
+.atag_offset	= 0x100,
 	.init_irq	= s3c6410_init_irq,
 	.handle_irq	= vic_handle_irq,
 	.map_io		= ok6410_map_io,
@@ -406,4 +445,4 @@ MACHINE_START(OK6410, "OK6410")
 	.init_late	= s3c64xx_init_late,
 	.timer		= &s3c24xx_timer,
 	.restart	= s3c64xx_restart,
-MACHINE_END
+	MACHINE_END
