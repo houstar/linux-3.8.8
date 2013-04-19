@@ -45,6 +45,7 @@
 #include <video/platform_lcd.h>
 #include <video/samsung_fimd.h>
 
+#include <linux/leds.h>
 #include "common.h"
 
 #define UCON S3C2410_UCON_DEFAULT
@@ -80,6 +81,44 @@ static struct s3c2410_uartcfg ok6410_uartcfgs[] __initdata = {
 		.ulcon	= ULCON,
 		.ufcon	= UFCON,
 	},
+};
+/* led setup*/
+/*
+ * GPM0 => LED1
+ * GPM1 => LED2
+ * GPM2 => LED3
+ * GPM3 => LED4
+ */
+static struct gpio_led ok6410_leds[] = {
+    [0] = {
+        .name = "LED1",
+        .gpio = S3C64XX_GPM(0),
+    },
+    [1] = {
+        .name = "LED2",
+        .gpio = S3C64XX_GPM(1),
+    },
+    [2] = {
+        .name = "LED3",
+        .gpio = S3C64XX_GPM(2),
+    },
+    [3] = {
+        .name = "LED4",
+        .gpio = S3C64XX_GPM(3),
+    },
+};
+
+static struct gpio_led_platform_data ok6410_gpio_led_pdata = {
+    .num_leds = ARRAY_SIZE(ok6410_leds),
+    .leds     = ok6410_leds,
+};
+
+static struct platform_device ok6410_device_led = {
+    .name = "leds-gpio",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &ok6410_gpio_led_pdata,
+    },
 };
 
 /* DM9000AEP 10/100 ethernet controller */
@@ -228,6 +267,7 @@ static struct platform_device *ok6410_devices[] __initdata = {
 	&s3c_device_ohci,
 	&s3c_device_nand,
 	&s3c_device_fb,
+	&ok6410_device_led,
 	&ok6410_lcd_powerdev,
 	&s3c_device_adc,
 	&s3c_device_ts,
