@@ -33,6 +33,7 @@
 #include <mach/regs-gpio.h>
 #include <mach/regs-modem.h>
 #include <mach/regs-srom.h>
+#include <mach/ts.h>
 
 #include <plat/adc.h>
 #include <plat/cpu.h>
@@ -383,6 +384,15 @@ static struct platform_device ok6410_lcd_powerdev = {
 	.dev.platform_data	= &ok6410_lcd_power_data,
 };
 
+/* Touch Screen support */
+static struct s3c_ts_mach_info s3c_ts_platform __initdata = {
+    .delay            = 10000,
+    .presc            = 49,
+    .oversampling_shift    = 2,
+    .resol_bit        = 12,        
+    .s3c_adc_con        = ADC_TYPE_2,    
+};
+
 static struct platform_device *ok6410_devices[] __initdata = {
 	&ok6410_device_eth,
 	&s3c_device_hsmmc0,
@@ -505,7 +515,8 @@ static void __init ok6410_machine_init(void)
 	s3c_sdhci0_set_platdata(&ok6410_hsmmc0_pdata);
 	s3c_sdhci1_set_platdata(&ok6410_hsmmc1_pdata);
 	s3c_fb_set_platdata(&ok6410_lcd_pdata[features.lcd_index]);
-	s3c24xx_ts_set_platdata(NULL);
+	//3c24xx_ts_set_platdata(NULL);
+	s3c_ts_set_platdata(&s3c_ts_platform);
 	s3c_hsotg_phy_config(1);
 	/* configure nCS1 width to 16 bits */
 

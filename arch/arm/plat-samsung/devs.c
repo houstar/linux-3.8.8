@@ -1260,8 +1260,8 @@ struct platform_device s3c_device_spi1 = {
 
 /* Touchscreen */
 
-#ifdef CONFIG_PLAT_S3C24XX
-static struct resource s3c_ts_resource[] = {
+//#ifdef CONFIG_PLAT_S3C24XX
+/*static struct resource s3c_ts_resource[] = {
 	[0] = DEFINE_RES_MEM(S3C24XX_PA_ADC, S3C24XX_SZ_ADC),
 	[1] = DEFINE_RES_IRQ(IRQ_TC),
 };
@@ -1279,13 +1279,15 @@ void __init s3c24xx_ts_set_platdata(struct s3c2410_ts_mach_info *hard_s3c2410ts_
 	s3c_set_platdata(hard_s3c2410ts_info,
 			 sizeof(struct s3c2410_ts_mach_info), &s3c_device_ts);
 }
-#endif /* CONFIG_PLAT_S3C24XX */
+*/
+//#endif /* CONFIG_PLAT_S3C24XX */
 
-#ifdef CONFIG_SAMSUNG_DEV_TS
+/*#ifdef CONFIG_SAMSUNG_DEV_TS
 static struct resource s3c_ts_resource[] = {
 	[0] = DEFINE_RES_MEM(SAMSUNG_PA_ADC, SZ_256),
 	[1] = DEFINE_RES_IRQ(IRQ_TC),
 };
+
 
 static struct s3c2410_ts_mach_info default_ts_data __initdata = {
 	.delay			= 10000,
@@ -1308,7 +1310,8 @@ void __init s3c24xx_ts_set_platdata(struct s3c2410_ts_mach_info *pd)
 	s3c_set_platdata(pd, sizeof(struct s3c2410_ts_mach_info),
 			 &s3c_device_ts);
 }
-#endif /* CONFIG_SAMSUNG_DEV_TS */
+*/
+//#endif /* CONFIG_SAMSUNG_DEV_TS */
 
 /* TV */
 

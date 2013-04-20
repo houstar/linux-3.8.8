@@ -10,7 +10,12 @@ menuconfig INPUT_TOUCHSCREEN
 	  If unsure, say Y.
 
 if INPUT_TOUCHSCREEN
-
+	config TOUCHSCREEN_S3C
+	tristate "S3C touchscreen driver"
+	depends on ARCH_S3C2410 || ARCH_S3C64XX || ARCH_S5P64XX || ARCH_S5PC1XX
+	default y
+	help
+	Say Y here to enable the driver for the touchscreen on the S3C SMDK board.
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
