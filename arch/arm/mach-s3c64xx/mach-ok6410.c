@@ -42,6 +42,7 @@
 #include <linux/platform_data/mtd-nand-s3c2410.h>
 #include <plat/regs-serial.h>
 #include <linux/platform_data/touchscreen-s3c2410.h>
+#include <linux/gpio_keys.h>
 
 #include <video/platform_lcd.h>
 #include <video/samsung_fimd.h>
@@ -56,6 +57,13 @@
 #define ULCON (S3C2410_LCON_CS8 | S3C2410_LCON_PNONE | S3C2410_LCON_STOPB)
 #define UFCON (S3C2410_UFCON_RXTRIG8 | S3C2410_UFCON_FIFOMODE)
 
+/* KEYs */
+#define KEY_UP 1
+#define KEY_DOWN 2
+#define KEY_LEFT 3
+#define KEY_RIGHT 4
+#define KEY_ENTER 5
+#define KEY_ESC 6 
 static struct s3c2410_uartcfg ok6410_uartcfgs[] __initdata = {
 	[0] = {
 		.hwport	= 0,
@@ -124,6 +132,70 @@ static struct platform_device ok6410_device_led = {
 		.platform_data = &ok6410_gpio_led_pdata,
 	},
 };
+/* Keys */
+
+static struct gpio_keys_button ok6410_buttons[] = {
+
+	{
+		.gpio        = S3C64XX_GPN(0),
+		.code        = KEY_UP,
+		.desc        = "Up",
+		.active_low    = 1,
+		.wakeup        = 0,
+	},
+	{
+		.gpio        = S3C64XX_GPN(1),
+		.code        = KEY_DOWN,
+		.desc        = "Down",
+		.active_low    = 1,
+		.wakeup        = 0,
+	},
+	{
+		.gpio        = S3C64XX_GPN(2),
+		.code        = KEY_LEFT,
+		.desc        = "Left",
+		.active_low    = 1,
+		.wakeup        = 0,
+	},
+	{
+		.gpio        = S3C64XX_GPN(3),
+		.code        = KEY_RIGHT,
+		.desc        = "Right",
+		.active_low    = 1,
+		.wakeup        = 0,
+	},
+	{
+		.gpio        = S3C64XX_GPN(4),
+		.code        = KEY_ENTER,
+		.desc        = "Enter",
+		.active_low    = 1,
+		.wakeup        = 0,
+	},
+	{
+		.gpio        = S3C64XX_GPN(5),
+		.code        = KEY_ESC,
+		.desc        = "Esc",
+		.active_low    = 1,
+		.wakeup        = 0,
+	}
+};
+
+static struct gpio_keys_platform_data ok6410_button_data ={
+
+	.buttons    =ok6410_buttons,
+	.nbuttons    =ARRAY_SIZE(ok6410_buttons),
+
+};
+
+static struct platform_device ok6410_device_button    = {
+
+	.name        ="gpio-keys",
+	.id            = -1,
+	.dev        = {
+		.platform_data =&ok6410_button_data,
+	},
+};
+
 
 /* MMC/SD config */
 static struct s3c_sdhci_platdata ok6410_hsmmc0_pdata = {
@@ -138,22 +210,22 @@ static struct s3c_sdhci_platdata ok6410_hsmmc1_pdata = {
 
 #ifdef CONFIG_USB_SUPPORT
 void s3c_hsotg_phy_config(int enable) {
-u32 val;
+	u32 val;
 
-if (enable) {
-__raw_writel(0x0, S3C_PHYPWR); /* Power up */
+	if (enable) {
+		__raw_writel(0x0, S3C_PHYPWR); /* Power up */
 
-val = __raw_readl(S3C_PHYCLK);
-val &= ~S3C_PHYCLK_CLKSEL_MASK;
-__raw_writel(val, S3C_PHYCLK);
+		val = __raw_readl(S3C_PHYCLK);
+		val &= ~S3C_PHYCLK_CLKSEL_MASK;
+		__raw_writel(val, S3C_PHYCLK);
 
-__raw_writel(0x1, S3C_RSTCON);
-udelay(5);
-__raw_writel(0x0, S3C_RSTCON); /* Finish the reset */
-udelay(5);
-} else {
-__raw_writel(0x19, S3C_PHYPWR); /* Power down */
-}
+		__raw_writel(0x1, S3C_RSTCON);
+		udelay(5);
+		__raw_writel(0x0, S3C_RSTCON); /* Finish the reset */
+		udelay(5);
+	} else {
+		__raw_writel(0x19, S3C_PHYPWR); /* Power down */
+	}
 }
 EXPORT_SYMBOL(s3c_hsotg_phy_config);
 #endif
@@ -232,16 +304,16 @@ static struct s3c_fb_pd_win ok6410_lcd_type0_fb_win = {
 
 static struct fb_videomode ok6410_lcd_type0_timing = {
 	/* 4.3" 480x272 */
-	.left_margin	= 3,
+	.left_margin	= 2,//3,
 	.right_margin	= 2,
-	.upper_margin	= 1,
-	.lower_margin	= 1,
-	.hsync_len	= 40,
-	.vsync_len	= 1,
+	.upper_margin	= 2,//1,
+	.lower_margin	= 2,//1,
+	.hsync_len	= 41,//40,
+	.vsync_len	= 10,//1,
 	.xres		= 480,
 	.yres		= 272,
 };
-
+/*
 static struct s3c_fb_pd_win ok6410_lcd_type1_fb_win = {
 	.max_bpp	= 32,
 	.default_bpp	= 16,
@@ -250,7 +322,7 @@ static struct s3c_fb_pd_win ok6410_lcd_type1_fb_win = {
 };
 
 static struct fb_videomode ok6410_lcd_type1_timing = {
-	/* 7.0" 800x480 */
+	//7.0" 800x480 
 	.left_margin	= 8,
 	.right_margin	= 13,
 	.upper_margin	= 7,
@@ -260,7 +332,7 @@ static struct fb_videomode ok6410_lcd_type1_timing = {
 	.xres		= 800,
 	.yres		= 480,
 };
-
+*/
 static struct s3c_fb_platdata ok6410_lcd_pdata[] __initdata = {
 	{
 		.setup_gpio	= s3c64xx_fb_gpio_setup_24bpp,
@@ -268,23 +340,37 @@ static struct s3c_fb_platdata ok6410_lcd_pdata[] __initdata = {
 		.win[0]		= &ok6410_lcd_type0_fb_win,
 		.vidcon0	= VIDCON0_VIDOUT_RGB | VIDCON0_PNRMODE_RGB,
 		.vidcon1	= VIDCON1_INV_HSYNC | VIDCON1_INV_VSYNC,
-	}, {
+	},/*{
 		.setup_gpio	= s3c64xx_fb_gpio_setup_24bpp,
 		.vtiming	= &ok6410_lcd_type1_timing,
 		.win[0]		= &ok6410_lcd_type1_fb_win,
 		.vidcon0	= VIDCON0_VIDOUT_RGB | VIDCON0_PNRMODE_RGB,
 		.vidcon1	= VIDCON1_INV_HSYNC | VIDCON1_INV_VSYNC,
-	},
+	},*/
 	{ },
 };
 
 static void ok6410_lcd_power_set(struct plat_lcd_data *pd,
 		unsigned int power)
 {
-	if (power)
-		gpio_direction_output(S3C64XX_GPE(0), 1);
-	else
-		gpio_direction_output(S3C64XX_GPE(0), 0);
+	/*if (power)
+	  gpio_direction_output(S3C64XX_GPE(0), 1);
+	  else 
+	  gpio_direction_output(S3C64XX_GPE(0), 0);
+	  */
+	if (power) {
+		gpio_direction_output(S3C64XX_GPF(13), 1);
+		gpio_direction_output(S3C64XX_GPF(15), 1);
+
+		/* fire nRESET on power up */
+		gpio_direction_output(S3C64XX_GPN(5), 0);
+		msleep(10);
+		gpio_direction_output(S3C64XX_GPN(5), 1);
+		msleep(1);
+	} else {
+		gpio_direction_output(S3C64XX_GPF(15), 0);
+		gpio_direction_output(S3C64XX_GPF(13), 0);
+	}
 }
 
 static struct plat_lcd_data ok6410_lcd_power_data = {
@@ -305,16 +391,28 @@ static struct platform_device *ok6410_devices[] __initdata = {
 	&s3c_device_nand,
 	&s3c_device_fb,
 	&ok6410_device_led,
+	&ok6410_device_button,
 	&ok6410_lcd_powerdev,
 	&s3c_device_adc,
 	&s3c_device_ts,
+};
+
+static struct map_desc smdk6410_iodesc[] = {
+	{
+		/* LCD support */
+		.virtual = (unsigned long)S3C_VA_LCD,
+		.pfn = __phys_to_pfn(S3C_PA_FB),
+		.length = SZ_16K,
+		.type = MT_DEVICE,
+	},
 };
 
 static void __init ok6410_map_io(void)
 {
 	u32 tmp;
 
-	s3c64xx_init_io(NULL, 0);
+	//s3c64xx_init_io(NULL, 0);
+	s3c64xx_init_io(smdk6410_iodesc, ARRAY_SIZE(smdk6410_iodesc));
 	s3c24xx_init_clocks(12000000);
 	s3c24xx_init_uarts(ok6410_uartcfgs, ARRAY_SIZE(ok6410_uartcfgs));
 
@@ -408,7 +506,7 @@ static void __init ok6410_machine_init(void)
 	s3c_sdhci1_set_platdata(&ok6410_hsmmc1_pdata);
 	s3c_fb_set_platdata(&ok6410_lcd_pdata[features.lcd_index]);
 	s3c24xx_ts_set_platdata(NULL);
-   s3c_hsotg_phy_config(1);
+	s3c_hsotg_phy_config(1);
 	/* configure nCS1 width to 16 bits */
 
 	cs1 = __raw_readl(S3C64XX_SROM_BW) &
